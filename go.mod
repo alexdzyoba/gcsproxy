@@ -1,4 +1,4 @@
-module github.com/cirruslabs/google-storage-proxy
+module github.com/alexdzyoba/gcsproxy
 
 go 1.13
 

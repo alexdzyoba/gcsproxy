@@ -8,5 +8,6 @@ require (
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsouza/fake-gcs-server v1.13.1
 	github.com/koding/multiconfig v0.0.0-20171124222453-69c27309b2d7
+	github.com/rs/zerolog v1.16.0
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 )

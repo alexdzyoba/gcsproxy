@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"cloud.google.com/go/storage"
-	"github.com/cirruslabs/google-storage-proxy/proxy"
+	"github.com/alexdzyoba/gcsproxy/proxy"
 )
 
 func main() {

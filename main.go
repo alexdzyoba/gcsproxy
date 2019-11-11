@@ -2,38 +2,33 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 
 	"cloud.google.com/go/storage"
+	"github.com/koding/multiconfig"
+
 	"github.com/alexdzyoba/gcsproxy/proxy"
 )
 
+type GCSProxy struct {
+	Port   int64  `default:"8080"`
+	Bucket string `required:"true"`
+	Prefix string
+}
+
 func main() {
-	var (
-		port          int64
-		bucketName    string
-		defaultPrefix string
-	)
-
-	flag.Int64Var(&port, "port", 8080, "Port to serve")
-	flag.StringVar(&bucketName, "bucket", "", "Google Storage Bucket Name")
-	flag.StringVar(&defaultPrefix, "prefix", "", "Optional prefix for all objects. For example, use --prefix=foo/ to work under foo directory in a bucket.")
-	flag.Parse()
-
-	if bucketName == "" {
-		log.Fatal("Please specify Google Cloud Storage Bucket")
-	}
+	conf := new(GCSProxy)
+	multiconfig.New().MustLoad(conf)
 
 	client, err := storage.NewClient(context.Background())
 	if err != nil {
 		log.Fatalf("Failed to create a storage client: %s", err)
 	}
 
-	bucketHandler := client.Bucket(bucketName)
-	storageProxy := proxy.NewStorageProxy(bucketHandler, defaultPrefix)
+	bucketHandler := client.Bucket(conf.Bucket)
+	storageProxy := proxy.NewStorageProxy(bucketHandler, conf.Prefix)
 
-	err = storageProxy.Serve(port)
+	err = storageProxy.Serve(conf.Port)
 	if err != nil {
 		log.Fatalf("Failed to start proxy: %s", err)
 	}

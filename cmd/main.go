@@ -1,19 +1,23 @@
 package main
 
 import (
-	"cloud.google.com/go/storage"
 	"context"
 	"flag"
-	"github.com/cirruslabs/google-storage-proxy/proxy"
 	"log"
+
+	"cloud.google.com/go/storage"
+	"github.com/cirruslabs/google-storage-proxy/proxy"
 )
 
 func main() {
-	var port int64
+	var (
+		port          int64
+		bucketName    string
+		defaultPrefix string
+	)
+
 	flag.Int64Var(&port, "port", 8080, "Port to serve")
-	var bucketName string
 	flag.StringVar(&bucketName, "bucket", "", "Google Storage Bucket Name")
-	var defaultPrefix string
 	flag.StringVar(&defaultPrefix, "prefix", "", "Optional prefix for all objects. For example, use --prefix=foo/ to work under foo directory in a bucket.")
 	flag.Parse()
 
@@ -27,7 +31,7 @@ func main() {
 	}
 
 	bucketHandler := client.Bucket(bucketName)
-	storageProxy := http_cache.NewStorageProxy(bucketHandler, defaultPrefix)
+	storageProxy := proxy.NewStorageProxy(bucketHandler, defaultPrefix)
 
 	err = storageProxy.Serve(port)
 	if err != nil {

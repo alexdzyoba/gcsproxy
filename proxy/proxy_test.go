@@ -1,11 +1,12 @@
-package http_cache
+package proxy
 
 import (
-	"testing"
-	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"net/http/httptest"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"testing"
+
+	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
 
 const TestBucketName = "some-bucket"
@@ -91,7 +92,7 @@ func Test_Blob_Upload(t *testing.T) {
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest("POST", "/test-file", strings.NewReader(expectedBlobContent))
-	storageProxy.uploadBlob(response, request,"test-file")
+	storageProxy.uploadBlob(response, request, "test-file")
 
 	if response.Code == http.StatusCreated {
 		t.Log("Passed")

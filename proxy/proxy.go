@@ -24,45 +24,37 @@ func NewStorageProxy(bucket *storage.BucketHandle, prefix string, logger zerolog
 	}
 }
 
-func (proxy StorageProxy) objectName(name string) string {
-	return proxy.prefix + name
+func (sp StorageProxy) objectName(name string) string {
+	return sp.prefix + name
 }
 
-func (proxy StorageProxy) Serve(port int64) error {
-	http.HandleFunc("/", proxy.handler)
-
-	addr := fmt.Sprintf(":%d", port)
-	proxy.logger.Info().Msgf("starting storage proxy at %s", addr)
-	return http.ListenAndServe(addr, nil)
-}
-
-func (proxy StorageProxy) handler(w http.ResponseWriter, r *http.Request) {
+func (sp StorageProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if path[0] == '/' {
 		path = path[1:]
 	}
 
-	handlerLogger := proxy.logger.With().Str("method", r.Method).Str("path", path).Logger()
+	sp.logger = sp.logger.With().Str("method", r.Method).Str("path", path).Logger()
 
 	switch r.Method {
 	case "GET":
-		proxy.downloadBlob(w, path, handlerLogger)
+		sp.downloadBlob(w, path)
 	case "HEAD":
-		proxy.checkBlobExists(w, path, handlerLogger)
+		sp.checkBlobExists(w, path)
 	case "POST":
-		proxy.uploadBlob(w, r, path, handlerLogger)
+		sp.uploadBlob(w, r, path)
 	case "PUT":
-		proxy.uploadBlob(w, r, path, handlerLogger)
+		sp.uploadBlob(w, r, path)
 	default:
-		proxy.logger.Error().Msgf("method %s not allowed", r.Method)
+		sp.logger.Error().Msgf("method %s not allowed", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-func (proxy StorageProxy) downloadBlob(w http.ResponseWriter, name string, logger zerolog.Logger) {
-	object := proxy.bucket.Object(proxy.objectName(name))
+func (sp StorageProxy) downloadBlob(w http.ResponseWriter, name string) {
+	object := sp.bucket.Object(sp.objectName(name))
 	if object == nil {
-		logger.Error().Msg("object not found")
+		sp.logger.Error().Msg("object not found")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -70,7 +62,7 @@ func (proxy StorageProxy) downloadBlob(w http.ResponseWriter, name string, logge
 	// Set content type header from object attrs
 	attrs, err := object.Attrs(context.Background())
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to get attributes")
+		sp.logger.Error().Err(err).Msg("failed to get attributes")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -80,7 +72,7 @@ func (proxy StorageProxy) downloadBlob(w http.ResponseWriter, name string, logge
 
 	reader, err := object.NewReader(context.Background())
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to create object reader")
+		sp.logger.Error().Err(err).Msg("failed to create object reader")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -89,18 +81,18 @@ func (proxy StorageProxy) downloadBlob(w http.ResponseWriter, name string, logge
 	bufferedReader := bufio.NewReader(reader)
 	_, err = bufferedReader.WriteTo(w)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to write response")
+		sp.logger.Error().Err(err).Msg("failed to write response")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	logger.Info().Msg("success")
+	sp.logger.Info().Msg("success")
 }
 
-func (proxy StorageProxy) checkBlobExists(w http.ResponseWriter, name string, logger zerolog.Logger) {
-	object := proxy.bucket.Object(proxy.objectName(name))
+func (sp StorageProxy) checkBlobExists(w http.ResponseWriter, name string) {
+	object := sp.bucket.Object(sp.objectName(name))
 	if object == nil {
-		logger.Error().Msg("object not found")
+		sp.logger.Error().Msg("object not found")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -108,28 +100,28 @@ func (proxy StorageProxy) checkBlobExists(w http.ResponseWriter, name string, lo
 	// lookup attributes to see if the object exists
 	attrs, err := object.Attrs(context.Background())
 	if err != nil || attrs == nil {
-		logger.Error().Err(err).Msg("failed to get attributes")
+		sp.logger.Error().Err(err).Msg("failed to get attributes")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	logger.Info().Msg("success")
+	sp.logger.Info().Msg("success")
 }
 
-func (proxy StorageProxy) uploadBlob(w http.ResponseWriter, r *http.Request, name string, logger zerolog.Logger) {
-	object := proxy.bucket.Object(proxy.objectName(name))
+func (sp StorageProxy) uploadBlob(w http.ResponseWriter, r *http.Request, name string) {
+	object := sp.bucket.Object(sp.objectName(name))
 
 	writer := object.NewWriter(context.Background())
 	defer writer.Close()
 
 	_, err := bufio.NewWriter(writer).ReadFrom(bufio.NewReader(r.Body))
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to write object")
+		sp.logger.Error().Err(err).Msg("failed to write object")
 		w.WriteHeader(http.StatusBadRequest)
 		errorMsg := fmt.Sprintf("failed create object %s", name)
-		w.Write([]byte(errorMsg))
+		_, _ = w.Write([]byte(errorMsg))
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	logger.Info().Msg("success")
+	sp.logger.Info().Msg("success")
 }

@@ -6,10 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
 
 const TestBucketName = "some-bucket"
+
+var logger = log.With().Str("component", "test").Logger()
 
 func Test_Blob_Exists(t *testing.T) {
 	server := fakestorage.NewServer([]fakestorage.Object{
@@ -20,7 +24,7 @@ func Test_Blob_Exists(t *testing.T) {
 	})
 	defer server.Stop()
 	client := server.Client()
-	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "")
+	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "", logger)
 
 	response := httptest.NewRecorder()
 	storageProxy.checkBlobExists(response, "some/object/file")
@@ -41,7 +45,7 @@ func Test_Default_Prefix(t *testing.T) {
 	})
 	defer server.Stop()
 	client := server.Client()
-	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "some/object/")
+	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "some/object/", logger)
 
 	response := httptest.NewRecorder()
 	storageProxy.checkBlobExists(response, "file")
@@ -64,7 +68,7 @@ func Test_Blob_Download(t *testing.T) {
 	})
 	defer server.Stop()
 	client := server.Client()
-	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "")
+	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "", logger)
 
 	response := httptest.NewRecorder()
 	storageProxy.downloadBlob(response, "some/file")
@@ -88,7 +92,7 @@ func Test_Blob_Upload(t *testing.T) {
 	server := fakestorage.NewServer([]fakestorage.Object{})
 	defer server.Stop()
 	client := server.Client()
-	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "")
+	storageProxy := NewStorageProxy(client.Bucket(TestBucketName), "", logger)
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest("POST", "/test-file", strings.NewReader(expectedBlobContent))
